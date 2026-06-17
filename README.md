@@ -1,123 +1,114 @@
-# The Forge — an AI Builder evaluation harness
+# The Forge — deployable web app
 
-*KPMG AI Builder case study · Rahi Kumar*
+A work-sample simulator that evaluates AI Builder candidates by how they reason under
+ambiguity, not by their résumé. This folder is a complete, ready-to-deploy React app.
 
-A work-sample simulator that evaluates AI Builder candidates by watching **how they think
-under ambiguity and constraint**, instead of scoring their résumé or their finished work.
-
----
-
-## Why I reframed the problem
-
-The brief asks for a tool that helps identify strong AI Builder candidates, and invites a
-redefinition of "evaluate well" if there's a reason. There is, and the reframe is the core
-of this submission.
-
-The trait the job needs — **builder judgment under ambiguity** — is a *behaviour*, not an
-artifact. It only shows up while someone is scoping an underspecified problem and deciding
-what to cut. A résumé captures claims; a finished take-home captures a polished result.
-Neither shows the reasoning. And because this is a role for people who use AI all day, every
-candidate will use AI on the take-home — so a clean artifact no longer separates the strong
-builder from the strong prompter. Scoring the output scores the one layer AI just made
-unreliable.
-
-So I changed the question from *"score the candidate's work"* to:
-
-> **How does a hiring panel reliably observe builder judgment — at the moment AI makes
-> outputs untrustworthy — in a way that is fair, auditable, and runs at scale without the
-> builder in the room?**
-
-The Forge is my answer. It stops grading outputs and starts instrumenting reasoning.
+Built with React + Vite. It compiles to a plain static site (HTML + JS), so it can be hosted
+free on GitHub Pages, Netlify, or Vercel. There is no server and no database to run.
 
 ---
 
-## What it is
+## Run it on your own computer first (optional, 2 minutes)
 
-The Forge drops a candidate into a deliberately ambiguous, KPMG-flavoured internal problem,
-holds a short structured conversation about how they'd approach it, throws an unexpected
-governance constraint at them mid-session, and produces a fair, evidence-backed scorecard
-for the panel.
+You need Node.js installed (https://nodejs.org — the "LTS" version). Then, in a terminal,
+inside this folder:
 
-Three parts:
+```bash
+npm install      # downloads the building blocks (one time)
+npm run dev      # starts a local preview
+```
 
-1. **The Challenge** — an under-specified internal problem (partners spend hours reconciling
-   client-acceptance risk checks across three systems). Vague on purpose — a strong builder
-   narrows it before building.
-2. **The Conversation** — an interviewer agent probes the candidate's scoping, then injects
-   a **curveball** mid-session ("Legal says client data can't leave the firm's tenant — what
-   changes?") to test adaptation, which is far harder to fake than vocabulary.
-3. **The Reviewer Scorecard** — a second agent scores the *reasoning* against competencies
-   drawn from the job description: a score per competency, a supporting quote as evidence, a
-   fairness note, and a recommended focus for the next interview.
+It will print a local address like `http://localhost:5173`. Open it in your browser. That's
+the app running on your machine. Press `Ctrl + C` in the terminal to stop it.
 
 ---
 
-## How to run it
+## Put it on GitHub
 
-**Option A — just click (recommended for review).** Open `the-forge.html` in any browser.
-It works with no install and no key — the AI parts use a built-in **scripted fallback** so a
-cold reviewer link always completes.
-
-**Option B — run it live with your own key.** Open the file, paste an Anthropic API key when
-prompted, and run a session. The interviewer and scorer now respond live (model:
-`claude-opus-4-8`). The key is kept in the browser tab for the session only — never stored,
-sent only to `api.anthropic.com`.
-
-No backend, no database, no build step. One file.
-
----
-
-## The rubric (drawn from the JD)
-
-The scorecard scores reasoning, not prose polish. Each competency maps to a line in the AI
-Builder job description.
-
-| Competency | What it rewards | JD source |
-|---|---|---|
-| Problem framing | Narrowing a vague prompt to the real problem | *"decide what the real problem even is"* |
-| Scoping & cut decisions | Choosing what **not** to build under a time cap | *"the choices you make, and the ones you do not"* |
-| Workflow & systems thinking | Multi-step design, human-AI handoffs, autonomy boundaries | *"think in workflows, not just models"* |
-| Responsible-AI-by-design | Treating risk/governance/trust as a design input, unprompted | *"risk, governance, ethics, trust as core constraints"* |
-| Builder bias-to-action | Proposing something concrete and testable | *"make something real, not only describe an idea"* |
-| Communication of tradeoffs | Naming assumptions, risks, next steps clearly | *"communicate assumptions, tradeoffs, risks"* |
-
-The rubric, scenarios, weights, and the thrown constraint all live in editable plain-text
-objects (`RUBRIC`, `SCENARIOS`, `CONFIG`) at the top of the `<script>` in `the-forge.html`.
-A panel can tune weights or add a new challenge without touching the harness logic — it's a
-reusable kit, not a one-off.
+1. Create a free account at https://github.com if you don't have one.
+2. Click **New repository**. Name it something like `the-forge`. Keep it **Public** (required
+   for free GitHub Pages hosting). Click **Create repository**.
+3. Upload this folder's contents. Two ways:
+   - **Easiest (no command line):** on the new repo page, click **uploading an existing file**,
+     then drag in everything in this folder *except* the `node_modules` and `dist` folders if
+     they exist. Commit.
+   - **Command line:** in a terminal inside this folder:
+     ```bash
+     git init
+     git add .
+     git commit -m "The Forge — initial commit"
+     git branch -M main
+     git remote add origin https://github.com/YOUR-USERNAME/the-forge.git
+     git push -u origin main
+     ```
 
 ---
 
-## Responsible-AI design (built in, not bolted on)
+## Host it (pick ONE)
 
-- **Human stays the decision-maker.** The Forge is a signal amplifier for a panel, never an
-  autonomous gate. No hire/no-hire decision is automated.
-- **Scores reasoning, not polish.** The evaluator is prompted to reward decision quality and
-  ignore verbosity and writing flair — reducing bias toward fluent or native-English candidates.
-- **Identity-blind.** The evaluator sees only the candidate's reasoning, not their name,
-  background, or résumé.
-- **Auditable.** Every score carries the evidence quote that produced it, so a human can
-  inspect and overturn it.
-- **Tests adaptation, not keywords.** The curveball checks whether a candidate responds to a
-  governance constraint — harder to game than saying the right words.
+### Option A — GitHub Pages (free, automatic)
+This repo already includes the automation. After your code is on GitHub:
+1. In your repo, go to **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **GitHub Actions**.
+3. That's it. Every time you push to `main`, it rebuilds and redeploys. Your live link appears
+   in **Settings → Pages** (looks like `https://YOUR-USERNAME.github.io/the-forge/`). The first
+   build takes ~1 minute — watch progress under the repo's **Actions** tab.
+
+### Option B — Netlify (free, drag-and-drop)
+1. Go to https://app.netlify.com → **Add new site → Import an existing project**.
+2. Connect GitHub and pick your `the-forge` repo.
+3. Netlify auto-detects Vite. If asked: **Build command** `npm run build`, **Publish directory**
+   `dist`. Click **Deploy**. You get a live link in under a minute.
+
+### Option C — Vercel (free)
+1. Go to https://vercel.com → **Add New → Project** → import your `the-forge` repo.
+2. It auto-detects the settings. Click **Deploy**. Live link follows.
 
 ---
 
-## Architecture notes
+## Live AI vs. scripted demo
 
-- **Hybrid AI over fully-live** — a cold reviewer link must never break, so live AI is the
-  upgrade and the scripted path is the floor. Both the interviewer and the scorer degrade
-  gracefully to the scripted path if an API call fails mid-session.
-- The **curveball is deterministic in both modes** — it's the controlled stimulus, so it's
-  always the scenario's governance constraint rather than something the model invents.
-- The scorer requests JSON and the harness parses it defensively (direct parse → largest
-  brace span) so a stray token never breaks the scorecard.
-- The scripted scorer is a transparent, deterministic cue-coverage estimate, clearly labelled
-  as illustrative — not dressed up as a model score.
+The app works two ways, no configuration needed:
 
-## What I'd build next
+- **Scripted demo (default):** with no API key, the interviewer and scorecard use built-in
+  scripted content. The full flow works end to end. This is what a reviewer sees when they open
+  your link cold — it never breaks.
+- **Live AI:** paste an Anthropic API key into the bar at the top of the app. The interviewer and
+  the evaluator then respond live via the Anthropic API. The key stays in the browser for that
+  session only and is sent nowhere except the API. Get a key at https://console.anthropic.com.
 
-A scenario pack with a calibration mode (anchor the scale on a known-strong employee); a
-real-repo telemetry track (hand the candidate a small broken agent and read how they debug
-and cut scope); grounded context via governed MCP tools in production; and inter-rater
-calibration against human reviewers over a cohort.
+> Note: the live mode calls the Anthropic API directly from the browser. That's perfect for a
+> demo. For real production use you'd route the call through a small backend so the key is never
+> in the browser — that's listed in the project notes as a next step.
+
+---
+
+## What's in this folder
+
+```
+the-forge/
+├── index.html              # page shell
+├── package.json            # dependency list + scripts
+├── vite.config.js          # build config (relative paths, works on any host)
+├── src/
+│   ├── main.jsx            # mounts the app
+│   └── App.jsx             # THE FORGE — the whole app lives here
+├── .github/workflows/
+│   └── deploy.yml          # auto-deploy to GitHub Pages
+└── .gitignore
+```
+
+To change the scenario, the curveball, or the rubric, edit the constants near the top of
+`src/App.jsx` (`SCENARIO`, `RUBRIC`). No other changes needed.
+
+---
+
+## How it works (one paragraph)
+
+A candidate opens the link and lands in the **Candidate session**: an interviewer presents a
+deliberately ambiguous problem, probes how they scope it, and throws an unexpected governance
+constraint at them mid-conversation. When the session ends, the app generates a **Reviewer
+scorecard** — an evidence-backed read against six competencies drawn from the job description —
+which is for the hiring panel and is never shown to the candidate. The Forge scores *reasoning
+under ambiguity*, not credentials, and the scorecard is always a signal for a human decision,
+never an automated verdict.
