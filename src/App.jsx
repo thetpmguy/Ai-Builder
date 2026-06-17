@@ -29,10 +29,11 @@ const INTRO =
   "Thanks for doing this. This is a short reasoning exercise — about 15 minutes. There's no single right answer, and I'm not looking for a polished solution. I just want to hear how you think, so please think out loud. Ready when you are.";
 
 // Hard caps so a session always terminates — no endless loop, no wasted tokens.
-const MAX_TURNS = 6; // candidate responses before the interview wraps
-const TIME_LIMIT_MS = 12 * 60 * 1000; // 12 min wall-clock from the first response
+const MAX_TURNS = 5; // hard cap on candidate responses → auto-score
+const SOFT_TURNS = 4; // after this, end early if answers aren't progressing
+const TIME_LIMIT_MS = 10 * 60 * 1000; // 10 min wall-clock from the first response → auto-score
 const CLOSING_LINE =
-  "That's a good place to stop — thank you for walking me through your thinking. I have what I need from here. When you're ready, click “End & score” to generate the panel's scorecard.";
+  "That's a good place to stop — thank you for walking me through your thinking. I have what I need from here. Generating the panel's scorecard now.";
 
 // Scripted fallback turns — used when no API key is present, so the link always works.
 const FALLBACK_INTERVIEWER = [
@@ -115,25 +116,66 @@ export default function App() {
   const [ended, setEnded] = useState(false); // interview has hit a cap and is closed
   const [startedAt, setStartedAt] = useState(null); // ms timestamp of the first response
   const scrollRef = useRef(null);
+  const endedRef = useRef(false); // guards against double-finish (timer + send race)
+  const msgsRef = useRef(msgs); // latest transcript, readable from async callbacks
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, busy]);
 
-  // Close the session once, appending the interviewer's closing line.
-  function endSession() {
-    setEnded((wasEnded) => {
-      if (!wasEnded) setMsgs((m) => [...m, { role: "assistant", text: CLOSING_LINE }]);
-      return true;
-    });
+  useEffect(() => { msgsRef.current = msgs; }, [msgs]);
+
+  // Heuristic stall check: after SOFT_TURNS, are the candidate's answers failing to
+  // move toward real problem-solving? (very short / low-effort, or repeating themselves)
+  function notProgressing(list) {
+    const ans = list.filter((m) => m.role === "user").map((m) => m.text.trim());
+    if (ans.length < SOFT_TURNS) return false;
+    const recent = ans.slice(-2);
+    const avgWords = recent.reduce((s, a) => s + a.split(/\s+/).filter(Boolean).length, 0) / recent.length;
+    const repeated = ans.length >= 2 && ans[ans.length - 1].toLowerCase() === ans[ans.length - 2].toLowerCase();
+    return avgWords < 12 || repeated;
   }
 
-  // Time cap: end the interview TIME_LIMIT_MS after the first response, even if idle.
+  // Score a transcript and show the scorecard.
+  async function runScore(list) {
+    setScoring(true);
+    setView("reviewer");
+    const transcript = list
+      .map((m) => (m.role === "assistant" ? "INTERVIEWER: " : "CANDIDATE: ") + m.text)
+      .join("\n\n");
+    try {
+      if (live) {
+        const raw = await callClaude(apiKey, SYSTEM_EVALUATOR, [
+          { role: "user", content: "Transcript of the session:\n\n" + transcript },
+        ]);
+        setScorecard(JSON.parse(raw.replace(/```json|```/g, "").trim()));
+      } else {
+        await new Promise((r) => setTimeout(r, 900));
+        setScorecard(FALLBACK_SCORECARD);
+      }
+    } catch (e) {
+      setScorecard(FALLBACK_SCORECARD);
+    } finally {
+      setScoring(false);
+    }
+  }
+
+  // End the interview once, append the closing line, and auto-jump to the scorecard.
+  function finishSession(list) {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    setEnded(true);
+    setBusy(false);
+    const closed = [...list, { role: "assistant", text: CLOSING_LINE }];
+    setMsgs(closed);
+    runScore(closed);
+  }
+
+  // Time cap: auto-score TIME_LIMIT_MS after the first response, even if idle.
   useEffect(() => {
     if (startedAt === null || ended) return;
     const remaining = TIME_LIMIT_MS - (Date.now() - startedAt);
-    if (remaining <= 0) { endSession(); return; }
-    const t = setTimeout(endSession, remaining);
+    const t = setTimeout(() => finishSession(msgsRef.current), Math.max(0, remaining));
     return () => clearTimeout(t);
   }, [startedAt, ended]);
 
@@ -143,7 +185,7 @@ export default function App() {
       .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }));
 
   async function send() {
-    if (!input.trim() || busy || ended) return;
+    if (!input.trim() || busy || ended || endedRef.current) return;
     const startedNow = startedAt === null ? Date.now() : startedAt;
     if (startedAt === null) setStartedAt(startedNow);
 
@@ -153,11 +195,13 @@ export default function App() {
     const newTurns = turns + 1;
     setTurns(newTurns);
 
-    // Cap reached (turn limit or time limit): close with a scripted line — no API
-    // call, so a candidate can't loop the interviewer and burn tokens.
+    // Auto-jump to the scorecard — no further API call, so a candidate can't loop
+    // the interviewer and burn tokens — when any of these hit:
+    //  • hard turn cap, • 10-minute time cap, • a stall after SOFT_TURNS turns.
     const timeUp = Date.now() - startedNow >= TIME_LIMIT_MS;
-    if (newTurns >= MAX_TURNS || timeUp) {
-      endSession();
+    const stalling = newTurns >= SOFT_TURNS && notProgressing(next);
+    if (newTurns >= MAX_TURNS || timeUp || stalling) {
+      finishSession(next);
       return;
     }
 
@@ -192,28 +236,9 @@ export default function App() {
     }
   }
 
-  async function generateScorecard() {
-    setScoring(true);
-    setView("reviewer");
-    const transcript = msgs
-      .map((m) => (m.role === "assistant" ? "INTERVIEWER: " : "CANDIDATE: ") + m.text)
-      .join("\n\n");
-    try {
-      if (live) {
-        const raw = await callClaude(apiKey, SYSTEM_EVALUATOR, [
-          { role: "user", content: "Transcript of the session:\n\n" + transcript },
-        ]);
-        const clean = raw.replace(/```json|```/g, "").trim();
-        setScorecard(JSON.parse(clean));
-      } else {
-        await new Promise((r) => setTimeout(r, 900));
-        setScorecard(FALLBACK_SCORECARD);
-      }
-    } catch (e) {
-      setScorecard(FALLBACK_SCORECARD);
-    } finally {
-      setScoring(false);
-    }
+  // Manual "End & score" — same path as an auto-jump, scoring the current transcript.
+  function generateScorecard() {
+    finishSession(msgsRef.current);
   }
 
   return (
@@ -284,8 +309,8 @@ export default function App() {
 
           <div style={{ fontSize: 12, color: "#8a93a6", padding: "2px 2px 6px" }}>
             {ended
-              ? "Session ended — the interview reached its limit. Click “End & score” for the panel scorecard."
-              : `Turn ${turns} of ${MAX_TURNS} · the interview wraps automatically at the turn or time limit.`}
+              ? "Session ended — generating the panel scorecard…"
+              : `Turn ${turns} of ${MAX_TURNS} · auto-scores at the turn limit, after 10 minutes, or if answers stall.`}
           </div>
           <div style={S.composer}>
             <textarea
