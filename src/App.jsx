@@ -89,6 +89,11 @@ async function callClaude(apiKey, system, messages) {
     body: JSON.stringify({
       model: "claude-haiku-4-5",
       max_tokens: 1024,
+      // temperature 0 = the model picks its most-likely answer every time, so the
+      // same transcript yields near-identical scores (consistency, not creativity).
+      // NOTE: supported on Haiku/Sonnet/Opus-4.6; the Opus 4.7/4.8 and Fable 5
+      // models REMOVE temperature and will 400 if you switch to them — drop this line then.
+      temperature: 0,
       system,
       messages,
     }),
