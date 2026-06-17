@@ -29,6 +29,9 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Enable Pages via the API token so no manual settings flip is needed.
+          enablement: true
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
