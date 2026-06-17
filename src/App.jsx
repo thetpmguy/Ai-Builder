@@ -18,11 +18,11 @@ const RUBRIC = [
 ];
 
 const SCENARIO = {
-  name: "Client-acceptance risk reconciliation",
+  name: "Accounts-payable invoice automation",
   framing:
-    "Here's the situation. Before a partner can take on a new client, someone has to confirm the client clears a set of acceptance and risk checks — conflicts of interest, sanctions and watchlist screening, and prior-engagement history. Today that information lives in three separate systems that don't talk to each other, so a person pulls from each one by hand, reconciles it, and writes up a go / no-go. It's slow, it's inconsistent between reviewers, and partners wait days to onboard clients.\n\nYou've been asked to look at where agentic AI could help. There's no fixed spec — I want to hear how you'd think about it, out loud, as you go. Where would you start?",
+    "Here's the situation. Our finance team processes a few thousand supplier invoices a month. They arrive by email in every format you can imagine — PDFs, scanned paper, phone photos, and every vendor's layout is different. A clerk opens each one, keys the line items into our ERP, matches it against the right purchase order, and routes anything that doesn't line up for follow-up. It's slow and tedious, the backlog spikes at month-end, and two clerks will key the same invoice slightly differently.\n\nYou've been asked to look at where agentic AI could help here. There's no fixed spec — I want to hear how you'd think about it, out loud, as you go. Where would you start?",
   curveball:
-    "Quick update from Legal before you go further: the client and engagement data in those three systems is confidential and cannot leave the firm's tenant — nothing can be sent to an external model or third-party service. How does that change your plan?",
+    "One thing to factor in before you go further: our ERP is an old on-prem system with no API. The only way to get an invoice into it is the exact same screen a clerk uses — point, click, type. IT has said they won't build an integration layer this year. How does that change your plan?",
 };
 
 const INTRO =
@@ -30,10 +30,10 @@ const INTRO =
 
 // Scripted fallback turns — used when no API key is present, so the link always works.
 const FALLBACK_INTERVIEWER = [
-  "Good instinct. Before we go further — what do you think the *real* problem is here? Is it the three systems, or something underneath that?",
-  "Say you only had a few days. What would you deliberately NOT build, at least not first?",
+  "Good instinct. Before we go further — what do you think the *real* problem is here? Is it the keying, the PO matching, or something underneath that?",
+  "Say you only had a few days. What would you deliberately NOT try to automate first?",
   "Walk me through the flow you're imagining. Where does a human stay in the loop, and where would you let an agent act on its own?",
-  "Concretely — what's the very first thing you'd stand up to learn the most, fastest?",
+  "Concretely — what's the very first slice you'd stand up to learn the most, fastest?",
 ];
 
 const SYSTEM_INTERVIEWER = `You are the Interviewer in "The Forge", a work-sample exercise that evaluates an AI Builder candidate by how they reason under ambiguity. You are talking to the candidate.
@@ -80,7 +80,7 @@ async function callClaude(apiKey, system, messages) {
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-haiku-4-5",
       max_tokens: 1024,
       system,
       messages,
