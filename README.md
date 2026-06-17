@@ -248,9 +248,33 @@ Save the file and the local preview (`npm run dev`) updates instantly.
 
 ---
 
-## A note on production
+## This is a demo — how I'd productionize it
 
-Live mode calls the Anthropic API directly from the browser, which is perfect for a demo. For real
-production use you'd put a small backend in front so the API key never lives in the browser, add
-session storage, and ground the scenarios in real (sanitized) company context. Those are
-deliberately left out here to keep the demo a single, zero-setup static site.
+**What this repo is:** a single, self-contained web app (a static front-end with no backend). That
+was a deliberate choice — it makes the demo open from one link with zero setup, and it's the right
+scope for a work-sample. It is **not** how I'd ship this for real.
+
+**If I had to productionize it, I'd build a proper agentic system with a front-end, a backend, and
+real infrastructure.** Concretely:
+
+- **Front-end + backend, not browser-only.** Keep a polished candidate UI, but move all AI calls to
+  a **backend service**. The API key (and any model routing) lives server-side and is **never sent
+  to the browser** — the current demo calls the Anthropic API directly from the browser, which is
+  fine for a demo but not for production.
+- **A real agentic system.** Promote the interviewer and evaluator from single prompts into proper
+  agents — with tools, retries, structured outputs, and orchestration — and add the consistency
+  upgrades noted above (score each competency independently, run self-consistency / median voting).
+- **Persistence + audit trail.** A database for sessions, transcripts, scorecards, and reviewer
+  overrides, so the panel can compare candidates, re-open sessions, and keep a defensible record.
+- **Identity, access control, and governance.** Authentication, role-based access (only the panel
+  sees scorecards), audit logging, and data-retention / privacy controls appropriate for hiring data.
+- **Grounded scenarios via governed tools (MCP).** Instead of hand-written scenarios, ground them in
+  real, sanitized, access-controlled company context through governed tools — and let the evaluator
+  pull the firm's own competency framework instead of a hard-coded rubric.
+- **Proper hosting infrastructure.** Deploy on real infra — containerized services behind an API
+  gateway, secrets management, autoscaling, monitoring/observability, and CI/CD — rather than a
+  free static host.
+
+All of that is deliberately left out here to keep the demo a single, zero-setup static site that a
+reviewer can open and trust to never break.
+
