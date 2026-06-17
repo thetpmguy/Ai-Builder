@@ -28,6 +28,12 @@ const SCENARIO = {
 const INTRO =
   "Thanks for doing this. This is a short reasoning exercise — about 15 minutes. There's no single right answer, and I'm not looking for a polished solution. I just want to hear how you think, so please think out loud. Ready when you are.";
 
+// Hard caps so a session always terminates — no endless loop, no wasted tokens.
+const MAX_TURNS = 6; // candidate responses before the interview wraps
+const TIME_LIMIT_MS = 12 * 60 * 1000; // 12 min wall-clock from the first response
+const CLOSING_LINE =
+  "That's a good place to stop — thank you for walking me through your thinking. I have what I need from here. When you're ready, click “End & score” to generate the panel's scorecard.";
+
 // Scripted fallback turns — used when no API key is present, so the link always works.
 const FALLBACK_INTERVIEWER = [
   "Good instinct. Before we go further — what do you think the *real* problem is here? Is it the keying, the PO matching, or something underneath that?",
@@ -106,11 +112,30 @@ export default function App() {
   const [curveballFired, setCurveballFired] = useState(false);
   const [scorecard, setScorecard] = useState(null);
   const [scoring, setScoring] = useState(false);
+  const [ended, setEnded] = useState(false); // interview has hit a cap and is closed
+  const [startedAt, setStartedAt] = useState(null); // ms timestamp of the first response
   const scrollRef = useRef(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [msgs, busy]);
+
+  // Close the session once, appending the interviewer's closing line.
+  function endSession() {
+    setEnded((wasEnded) => {
+      if (!wasEnded) setMsgs((m) => [...m, { role: "assistant", text: CLOSING_LINE }]);
+      return true;
+    });
+  }
+
+  // Time cap: end the interview TIME_LIMIT_MS after the first response, even if idle.
+  useEffect(() => {
+    if (startedAt === null || ended) return;
+    const remaining = TIME_LIMIT_MS - (Date.now() - startedAt);
+    if (remaining <= 0) { endSession(); return; }
+    const t = setTimeout(endSession, remaining);
+    return () => clearTimeout(t);
+  }, [startedAt, ended]);
 
   const apiMessages = (arr) =>
     arr
@@ -118,12 +143,24 @@ export default function App() {
       .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }));
 
   async function send() {
-    if (!input.trim() || busy) return;
+    if (!input.trim() || busy || ended) return;
+    const startedNow = startedAt === null ? Date.now() : startedAt;
+    if (startedAt === null) setStartedAt(startedNow);
+
     const next = [...msgs, { role: "user", text: input.trim() }];
     setMsgs(next);
     setInput("");
     const newTurns = turns + 1;
     setTurns(newTurns);
+
+    // Cap reached (turn limit or time limit): close with a scripted line — no API
+    // call, so a candidate can't loop the interviewer and burn tokens.
+    const timeUp = Date.now() - startedNow >= TIME_LIMIT_MS;
+    if (newTurns >= MAX_TURNS || timeUp) {
+      endSession();
+      return;
+    }
+
     setBusy(true);
 
     // After the candidate has ~2 substantive turns, fire the curveball once.
@@ -245,22 +282,28 @@ export default function App() {
             )}
           </div>
 
+          <div style={{ fontSize: 12, color: "#8a93a6", padding: "2px 2px 6px" }}>
+            {ended
+              ? "Session ended — the interview reached its limit. Click “End & score” for the panel scorecard."
+              : `Turn ${turns} of ${MAX_TURNS} · the interview wraps automatically at the turn or time limit.`}
+          </div>
           <div style={S.composer}>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder="Think out loud…"
+              placeholder={ended ? "The session has ended." : "Think out loud…"}
               style={S.textarea}
               rows={2}
+              disabled={ended}
             />
             <div style={S.composerRight}>
-              <button style={S.sendBtn} onClick={send} disabled={busy}>Send</button>
+              <button style={S.sendBtn} onClick={send} disabled={busy || ended}>Send</button>
               <button
-                style={{ ...S.endBtn, ...(turns < 2 ? S.endDim : {}) }}
+                style={{ ...S.endBtn, ...(turns < 2 && !ended ? S.endDim : {}) }}
                 onClick={generateScorecard}
-                disabled={turns < 2}
-                title={turns < 2 ? "Answer a couple of questions first" : "End the session and generate the reviewer scorecard"}
+                disabled={turns < 2 && !ended}
+                title={turns < 2 && !ended ? "Answer a couple of questions first" : "End the session and generate the reviewer scorecard"}
               >
                 End & score
               </button>
