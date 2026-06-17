@@ -113,6 +113,36 @@ a limit costs **zero tokens**, and the panel scorecard is generated automaticall
 
 ---
 
+## How consistent are the scores?
+
+A fair question — if you run the same transcript twice, do you get the same scores? Here's the
+honest answer and what the app does about it.
+
+**Perfect, identical-every-time scoring is not the right goal for a judgment task.** The more you
+force an AI evaluator to produce byte-for-byte identical output, the more you turn its nuanced
+reading into a rigid checklist — which is exactly the "résumé/keyword scorer" this whole project
+moves away from. So the target isn't *identical*, it's **consistent enough to trust and
+transparent enough to check.**
+
+What the app does to stay consistent:
+
+- **Temperature 0.** The evaluator runs at `temperature: 0`, which tells the model to pick its
+  most-likely answer every time instead of varying. The same transcript then produces near-identical
+  scores (think "same score 9 times out of 10," not "anywhere from 3 to 5"). *Note: even at 0,
+  models aren't guaranteed perfectly identical — there's tiny unavoidable runtime variation — but
+  it's dramatically more stable.*
+- **Concrete rubric anchors.** The clearer the definition of what a "5" looks like versus a "3,"
+  the less room the model has to wander. Sharper anchors = lower variance.
+- **Evidence quotes + a human in the loop.** Every score ships with the quote that produced it. So
+  even if a borderline answer scores a 3 on one run and a 4 on another, a human sees the exact
+  reasoning and makes the call. **The human is the consistency guarantee, not the model.**
+
+**What I'd add next (left out to keep the demo simple):** score each competency in its own call so
+they don't bleed into each other; and run the evaluation a few times and take the median
+("self-consistency"). Both improve reliability at the cost of more API calls.
+
+---
+
 ## Run it on your own computer (for development)
 
 You need **Node.js** installed first — get the "LTS" version from https://nodejs.org. Then open a
